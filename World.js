@@ -415,7 +415,7 @@ function main() {
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 1; i++) {
     let x = (Math.random() - 0.5) * 7;
     let z = (Math.random() - 0.5) * 7;
     addGrassBlock(x, 0, z);
@@ -560,6 +560,16 @@ function renderAllShapes() {
   floor.matrix.scale(20, 0.1, 20);
   floor.matrix.translate(-0.5, 0, -0.5);
   floor.render();
+
+  var staticSphere = new Sphere2();
+  staticSphere.color = [0.9, 0.3, 0.3, 1.0];
+  staticSphere.textureNum = -2;
+  if (g_normalOn) {
+    staticSphere.textureNum = -3;
+  }
+  staticSphere.matrix.setTranslate(0.5, 0, -2.5);
+  staticSphere.matrix.scale(0.75, 0.75, 0.75);
+  staticSphere.render();
 
   var bodyColor = [1.0, 0.85, 0.0, 1.0];
   var headColor = [1.0, 0.9, 0.1, 1.0];
