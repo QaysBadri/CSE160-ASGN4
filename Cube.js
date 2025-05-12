@@ -13,67 +13,86 @@ class Cube {
     gl.uniformMatrix4fv(u_ModelMatrix, false, this.matrix.elements);
     gl.uniform4f(u_FragColor, rgba[0], rgba[1], rgba[2], rgba[3]);
 
-    const uv00 = 0;
-    const uv01 = 0;
-    const uv10 = 1;
-    const uv11 = 0;
-    const uv02 = 0;
-    const uv03 = 1;
-    const uv12 = 1;
-    const uv13 = 1;
+    const uv00 = 0,
+      uv01 = 0;
+    const uv10 = 1,
+      uv11 = 0;
+    const uv02 = 0,
+      uv03 = 1;
+    const uv12 = 1,
+      uv13 = 1;
 
-    drawTriangle3DUV(
-      [0, 0, 0, 1, 0, 0, 1, 1, 0],
-      [uv00, uv01, uv10, uv11, uv12, uv13]
-    );
-    drawTriangle3DUV(
-      [0, 0, 0, 1, 1, 0, 0, 1, 0],
-      [uv00, uv01, uv12, uv13, uv02, uv03]
-    );
+    const frontNormal = [0.0, 0.0, 1.0];
+    const backNormal = [0.0, 0.0, -1.0];
+    const topNormal = [0.0, 1.0, 0.0];
+    const bottomNormal = [0.0, -1.0, 0.0];
+    const rightNormal = [1.0, 0.0, 0.0];
+    const leftNormal = [-1.0, 0.0, 0.0];
 
-    drawTriangle3DUV(
-      [0, 0, 1, 1, 0, 1, 1, 1, 1],
-      [uv00, uv01, uv10, uv11, uv12, uv13]
-    );
-    drawTriangle3DUV(
-      [0, 0, 1, 1, 1, 1, 0, 1, 1],
-      [uv00, uv01, uv12, uv13, uv02, uv03]
-    );
+    const createNormalArray = (normal) => [
+      normal[0],
+      normal[1],
+      normal[2],
+      normal[0],
+      normal[1],
+      normal[2],
+      normal[0],
+      normal[1],
+      normal[2],
+    ];
 
-    drawTriangle3DUV(
-      [0, 1, 0, 0, 1, 1, 1, 1, 1],
-      [uv00, uv01, uv02, uv03, uv12, uv13]
-    );
-    drawTriangle3DUV(
-      [0, 1, 0, 1, 1, 1, 1, 1, 0],
-      [uv00, uv01, uv12, uv13, uv10, uv11]
-    );
+    let vertices = [0, 0, 0, 1, 0, 0, 1, 1, 0];
+    let uvs = [uv00, uv01, uv10, uv11, uv12, uv13];
+    let normals = createNormalArray(backNormal);
+    drawTriangle3DUVNormal(vertices, uvs, normals);
 
-    drawTriangle3DUV(
-      [0, 0, 0, 1, 0, 0, 1, 0, 1],
-      [uv00, uv01, uv10, uv11, uv12, uv13]
-    );
-    drawTriangle3DUV(
-      [0, 0, 0, 1, 0, 1, 0, 0, 1],
-      [uv00, uv01, uv12, uv13, uv02, uv03]
-    );
+    vertices = [0, 0, 0, 1, 1, 0, 0, 1, 0];
+    uvs = [uv00, uv01, uv12, uv13, uv02, uv03];
+    drawTriangle3DUVNormal(vertices, uvs, normals);
 
-    drawTriangle3DUV(
-      [1, 0, 0, 1, 0, 1, 1, 1, 1],
-      [uv00, uv01, uv10, uv11, uv12, uv13]
-    );
-    drawTriangle3DUV(
-      [1, 0, 0, 1, 1, 1, 1, 1, 0],
-      [uv00, uv01, uv12, uv13, uv02, uv03]
-    );
+    vertices = [0, 0, 1, 1, 0, 1, 1, 1, 1];
+    uvs = [uv00, uv01, uv10, uv11, uv12, uv13];
+    normals = createNormalArray(frontNormal);
+    drawTriangle3DUVNormal(vertices, uvs, normals);
 
-    drawTriangle3DUV(
-      [0, 0, 0, 0, 1, 0, 0, 1, 1],
-      [uv00, uv01, uv02, uv03, uv12, uv13]
-    );
-    drawTriangle3DUV(
-      [0, 0, 0, 0, 1, 1, 0, 0, 1],
-      [uv00, uv01, uv12, uv13, uv10, uv11]
-    );
+    vertices = [0, 0, 1, 1, 1, 1, 0, 1, 1];
+    uvs = [uv00, uv01, uv12, uv13, uv02, uv03];
+    drawTriangle3DUVNormal(vertices, uvs, normals);
+
+    vertices = [0, 1, 0, 0, 1, 1, 1, 1, 1];
+    uvs = [uv00, uv01, uv02, uv03, uv12, uv13];
+    normals = createNormalArray(topNormal);
+    drawTriangle3DUVNormal(vertices, uvs, normals);
+
+    vertices = [0, 1, 0, 1, 1, 1, 1, 1, 0];
+    uvs = [uv00, uv01, uv12, uv13, uv10, uv11];
+    drawTriangle3DUVNormal(vertices, uvs, normals);
+
+    vertices = [0, 0, 0, 1, 0, 0, 1, 0, 1];
+    uvs = [uv00, uv01, uv10, uv11, uv12, uv13];
+    normals = createNormalArray(bottomNormal);
+    drawTriangle3DUVNormal(vertices, uvs, normals);
+
+    vertices = [0, 0, 0, 1, 0, 1, 0, 0, 1];
+    uvs = [uv00, uv01, uv12, uv13, uv02, uv03];
+    drawTriangle3DUVNormal(vertices, uvs, normals);
+
+    vertices = [1, 0, 0, 1, 0, 1, 1, 1, 1];
+    uvs = [uv00, uv01, uv10, uv11, uv12, uv13];
+    normals = createNormalArray(rightNormal);
+    drawTriangle3DUVNormal(vertices, uvs, normals);
+
+    vertices = [1, 0, 0, 1, 1, 1, 1, 1, 0];
+    uvs = [uv00, uv01, uv12, uv13, uv02, uv03];
+    drawTriangle3DUVNormal(vertices, uvs, normals);
+
+    vertices = [0, 0, 0, 0, 1, 0, 0, 1, 1];
+    uvs = [uv00, uv01, uv02, uv03, uv12, uv13];
+    normals = createNormalArray(leftNormal);
+    drawTriangle3DUVNormal(vertices, uvs, normals);
+
+    vertices = [0, 0, 0, 0, 1, 1, 0, 0, 1];
+    uvs = [uv00, uv01, uv12, uv13, uv10, uv11];
+    drawTriangle3DUVNormal(vertices, uvs, normals);
   }
 }

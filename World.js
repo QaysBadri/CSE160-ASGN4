@@ -168,16 +168,12 @@ function connectVariablesToGLSL() {
 }
 
 function addActionsForHtmlUI() {
-  document
-    .getElementById("normalOnButton")
-    .addEventListener("input", function () {
-      g_normalOn = true;
-    });
-  document
-    .getElementById("normalOffButton")
-    .addEventListener("input", function () {
-      g_normalOn = false;
-    });
+  document.getElementById("normalsOnButton").onclick = function () {
+    g_normalOn = true;
+  };
+  document.getElementById("normalsOffButton").onclick = function () {
+    g_normalOn = false;
+  };
   document
     .getElementById("wingUpperSlide")
     .addEventListener("input", function () {
@@ -546,7 +542,10 @@ function renderAllShapes() {
     gl.bindTexture(gl.TEXTURE_2D, g_skyTextureObject);
   }
   sky.textureNum = 0;
-  sky.matrix.scale(100, 100, 100);
+  if (g_normalOn) {
+    sky.textureNum = -3;
+  }
+  sky.matrix.scale(-100, -100, -100);
   sky.matrix.translate(-0.5, -0.5, -0.5);
   sky.render();
   gl.depthMask(true);
@@ -573,6 +572,9 @@ function renderAllShapes() {
   var body = new Cube();
   body.color = bodyColor;
   body.textureNum = -2;
+  if (g_normalOn) {
+    body.textureNum = -3;
+  }
   body.matrix.setTranslate(-0.4, -0.1, -0.25);
   body.matrix.scale(0.6, 0.4, 0.5);
   body.render();
@@ -580,6 +582,9 @@ function renderAllShapes() {
   var head = new Cube();
   head.color = headColor;
   head.textureNum = -2;
+  if (g_normalOn) {
+    head.textureNum = -3;
+  }
   head.matrix.setTranslate(0.3, 0.3, 0);
   head.matrix.rotate(g_headAngle, 0, 0, 1);
   var headBaseMatrix = new Matrix4(head.matrix);
@@ -623,6 +628,9 @@ function renderAllShapes() {
   var wingUpperL = new Cube();
   wingUpperL.color = wingColor;
   wingUpperL.textureNum = -2;
+  if (g_normalOn) {
+    wingUpperL.textureNum = -3;
+  }
   wingUpperL.matrix.setTranslate(-0.11, 0.1, 0.29);
   wingUpperL.matrix.rotate(g_wingUpperAngle, 1, 0, 0);
   var wingUpperLMatrix = new Matrix4(wingUpperL.matrix);
@@ -633,6 +641,9 @@ function renderAllShapes() {
   var wingLowerL = new Cube();
   wingLowerL.color = wingColor;
   wingLowerL.textureNum = -2;
+  if (g_normalOn) {
+    wingLowerL.textureNum = -3;
+  }
   wingLowerL.matrix = wingUpperLMatrix;
   wingLowerL.matrix.translate(0.3, 0, 0);
   wingLowerL.matrix.rotate(g_wingLowerAngle, 0, 0, 1);
@@ -644,6 +655,9 @@ function renderAllShapes() {
   var wingHandL = new Cube();
   wingHandL.color = handColor;
   wingHandL.textureNum = -2;
+  if (g_normalOn) {
+    wingHandL.textureNum = -3;
+  }
   wingHandL.matrix = wingLowerLMatrix;
   wingHandL.matrix.translate(0.25, 0, 0);
   wingHandL.matrix.rotate(g_wingHandAngle, 0, 1, 0);
@@ -654,6 +668,9 @@ function renderAllShapes() {
   var wingUpperR = new Cube();
   wingUpperR.color = wingColor;
   wingUpperR.textureNum = -2;
+  if (g_normalOn) {
+    wingUpperR.textureNum = -3;
+  }
   wingUpperR.matrix.setTranslate(-0.11, 0.1, -0.29);
   wingUpperR.matrix.rotate(-g_wingUpperAngle, 1, 0, 0);
   var wingUpperRMatrix = new Matrix4(wingUpperR.matrix);
@@ -664,6 +681,9 @@ function renderAllShapes() {
   var wingLowerR = new Cube();
   wingLowerR.color = wingColor;
   wingLowerR.textureNum = -2;
+  if (g_normalOn) {
+    wingLowerR.textureNum = -3;
+  }
   wingLowerR.matrix = wingUpperRMatrix;
   wingLowerR.matrix.translate(0.3, 0, 0);
   wingLowerR.matrix.rotate(-g_wingLowerAngle, 0, 0, 1);
@@ -675,6 +695,9 @@ function renderAllShapes() {
   var wingHandR = new Cube();
   wingHandR.color = handColor;
   wingHandR.textureNum = -2;
+  if (g_normalOn) {
+    wingHandR.textureNum = -3;
+  }
   wingHandR.matrix = wingLowerRMatrix;
   wingHandR.matrix.translate(0.25, 0, 0);
   wingHandR.matrix.rotate(-g_wingHandAngle, 0, 1, 0);
