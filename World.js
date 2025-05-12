@@ -5,6 +5,7 @@ var VSHADER_SOURCE = `
     attribute vec3 a_Normal;
     varying vec2 v_UV;
     varying vec3 v_Normal;
+    varying vec4 v_VertPos;
     uniform mat4 u_ModelMatrix;
     uniform mat4 u_GlobalRotateMatrix;
     uniform mat4 u_ViewMatrix;
@@ -13,6 +14,7 @@ var VSHADER_SOURCE = `
       gl_Position = u_ProjectionMatrix * u_ViewMatrix * u_GlobalRotateMatrix * u_ModelMatrix * a_Position;
       v_UV = a_UV;
       v_Normal = a_Normal;
+      v_VertPos = u_ModelMatrix * a_Position;
   }`;
 
 var FSHADER_SOURCE = `
@@ -22,6 +24,8 @@ var FSHADER_SOURCE = `
   uniform vec4 u_FragColor;
   uniform sampler2D u_Sampler;
   uniform int u_whichTexture;
+  uniform vec3 u_lightPos;
+  varying vec4 v_VertPos;
   void main() {
     if (u_whichTexture == -3) {
       gl_FragColor = vec4((v_Normal+1.0)/2.0, 1.0);
@@ -33,6 +37,14 @@ var FSHADER_SOURCE = `
       gl_FragColor = texture2D(u_Sampler, v_UV);
     } else {
       gl_FragColor = vec4(1, 0.2, 0.2, 1);
+    }
+
+    vec3 lightVector = vec3(v_VertPos) - u_lightPos;
+    float r = length(lightVector);
+    if (r < 1.0) {
+      gl_FragColor = vec4(1, 0, 0, 1);
+    } else if (r < 2.0) {
+      gl_FragColor = vec4(0, 1, 0, 1);
     }
   }`;
 
@@ -46,7 +58,8 @@ let canvas,
   u_ViewMatrix,
   u_ProjectionMatrix,
   u_Sampler,
-  u_whichTexture;
+  u_whichTexture,
+  u_lightPos;
 
 let g_skyTextureObject = null;
 let g_grassTextureObject = null;
@@ -84,6 +97,8 @@ var g_up = [0, 1, 0];
 let grassBlocks = [];
 
 let g_normalOn = false;
+
+let g_lightPos = [0, 1, -2];
 
 function addGrassBlock(x, y, z) {
   let grass = new Cube();
@@ -126,6 +141,7 @@ function connectVariablesToGLSL() {
   u_ProjectionMatrix = gl.getUniformLocation(gl.program, "u_ProjectionMatrix");
   u_Sampler = gl.getUniformLocation(gl.program, "u_Sampler");
   u_whichTexture = gl.getUniformLocation(gl.program, "u_whichTexture");
+  u_lightPos = gl.getUniformLocation(gl.program, "u_lightPos");
 
   if (
     a_Position < 0 ||
@@ -137,7 +153,8 @@ function connectVariablesToGLSL() {
     !u_ViewMatrix ||
     !u_ProjectionMatrix ||
     !u_Sampler ||
-    !u_whichTexture
+    !u_whichTexture ||
+    !u_lightPos
   ) {
     console.error(
       "Failed to get storage location of one or more GLSL variables."
@@ -229,6 +246,33 @@ function addActionsForHtmlUI() {
     .getElementById("animationHandOffButton")
     .addEventListener("click", function () {
       g_wingHandAnimation = false;
+    });
+
+  document
+    .getElementById("lightSlideX")
+    .addEventListener("mousemove", function (ev) {
+      if (ev.buttons === 1) {
+        g_lightPos[0] = this.value / 100;
+      }
+      renderAllShapes();
+    });
+
+  document
+    .getElementById("lightSlideY")
+    .addEventListener("mousemove", function (ev) {
+      if (ev.buttons === 1) {
+        g_lightPos[1] = this.value / 100;
+      }
+      renderAllShapes();
+    });
+
+  document
+    .getElementById("lightSlideZ")
+    .addEventListener("mousemove", function (ev) {
+      if (ev.buttons === 1) {
+        g_lightPos[2] = this.value / 100;
+      }
+      renderAllShapes();
     });
 }
 
@@ -471,6 +515,7 @@ function updateAnimationAngles() {
     g_wingHandAngle = 25 * Math.sin(g_seconds * 3 * Math.PI);
     document.getElementById("wingHandSlide").value = g_wingHandAngle;
   }
+  g_lightPos[0] = Math.cos(g_seconds);
 }
 
 function keydown(ev) {
@@ -560,6 +605,15 @@ function renderAllShapes() {
   floor.matrix.scale(20, 0.1, 20);
   floor.matrix.translate(-0.5, 0, -0.5);
   floor.render();
+
+  gl.uniform3f(u_lightPos, g_lightPos[0], g_lightPos[1], g_lightPos[2]);
+
+  var light = new Cube();
+  light.color[(2, 2, 0, 1)];
+  light.matrix.translate(g_lightPos[0], g_lightPos[1], g_lightPos[2]);
+  light.matrix.scale(0.1, 0.1, 0.1);
+  light.matrix.translate(-0.5, -0.5, -0.5);
+  light.render();
 
   var staticSphere = new Sphere2();
   staticSphere.color = [0.9, 0.3, 0.3, 1.0];

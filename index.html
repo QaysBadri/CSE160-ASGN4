@@ -13,10 +13,28 @@
         </canvas>
         <p id="numdot">XXX</p>
 
-        <div class="normals-controls">
-          Normals:
-          <button id="normalsOnButton">ON</button>
-          <button id="normalsOffButton">OFF</button>
+        <div class="control-group">
+          <label for="lightSlide">Light XYZ:</label>
+          <input id="lightSlideX" type="range" min="-250" max="900" value="0" />
+          <input
+            id="lightSlideY"
+            type="range"
+            min="-250"
+            max="900"
+            value="100"
+          />
+          <input
+            id="lightSlideZ"
+            type="range"
+            min="-250"
+            max="900"
+            value="200"
+          />
+          <div class="normals-controls">
+            Normals:
+            <button id="normalsOnButton">ON</button>
+            <button id="normalsOffButton">OFF</button>
+          </div>
         </div>
 
         <div class="control-group">
