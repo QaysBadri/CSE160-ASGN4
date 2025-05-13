@@ -25,7 +25,9 @@ var FSHADER_SOURCE = `
   uniform sampler2D u_Sampler;
   uniform int u_whichTexture;
   uniform vec3 u_lightPos;
+  uniform vec3 u_cameraPos;
   varying vec4 v_VertPos;
+  uniform bool u_lightOn;
   void main() {
     if (u_whichTexture == -3) {
       gl_FragColor = vec4((v_Normal+1.0)/2.0, 1.0);
@@ -39,12 +41,25 @@ var FSHADER_SOURCE = `
       gl_FragColor = vec4(1, 0.2, 0.2, 1);
     }
 
-    vec3 lightVector = vec3(v_VertPos) - u_lightPos;
+    vec3 lightVector = u_lightPos - vec3(v_VertPos);
     float r = length(lightVector);
-    if (r < 1.0) {
-      gl_FragColor = vec4(1, 0, 0, 1);
-    } else if (r < 2.0) {
-      gl_FragColor = vec4(0, 1, 0, 1);
+
+    vec3 L = normalize(lightVector);
+    vec3 N = normalize(v_Normal);
+    float nDotL = max(dot(N, L), 0.0);
+
+    vec3 R = reflect(-L, N);
+
+    vec3 E = normalize(u_cameraPos - vec3(v_VertPos));
+
+    float specular = pow(max(dot(E, R), 0.0), 10.0);
+
+    vec3 diffuse  = vec3(gl_FragColor) * nDotL * 0.7;
+    vec3 ambient = vec3(gl_FragColor) * 0.3;
+    if (u_lightOn){
+      gl_FragColor = vec4(specular + diffuse + ambient, 1.0);
+    } else {
+      gl_FragColor = vec4(diffuse + ambient, 1.0);
     }
   }`;
 
@@ -59,7 +74,8 @@ let canvas,
   u_ProjectionMatrix,
   u_Sampler,
   u_whichTexture,
-  u_lightPos;
+  u_lightPos,
+  u_cameraPos;
 
 let g_skyTextureObject = null;
 let g_grassTextureObject = null;
@@ -99,6 +115,7 @@ let grassBlocks = [];
 let g_normalOn = false;
 
 let g_lightPos = [0, 1, -2];
+let g_lightOn = true;
 
 function addGrassBlock(x, y, z) {
   let grass = new Cube();
@@ -142,6 +159,8 @@ function connectVariablesToGLSL() {
   u_Sampler = gl.getUniformLocation(gl.program, "u_Sampler");
   u_whichTexture = gl.getUniformLocation(gl.program, "u_whichTexture");
   u_lightPos = gl.getUniformLocation(gl.program, "u_lightPos");
+  u_cameraPos = gl.getUniformLocation(gl.program, "u_cameraPos");
+  u_lightOn = gl.getUniformLocation(gl.program, "u_lightOn");
 
   if (
     a_Position < 0 ||
@@ -190,6 +209,12 @@ function addActionsForHtmlUI() {
   };
   document.getElementById("normalsOffButton").onclick = function () {
     g_normalOn = false;
+  };
+  document.getElementById("lightOnButton").onclick = function () {
+    g_lightOn = true;
+  };
+  document.getElementById("lightOffButton").onclick = function () {
+    g_lightOn = false;
   };
   document
     .getElementById("wingUpperSlide")
@@ -608,10 +633,14 @@ function renderAllShapes() {
 
   gl.uniform3f(u_lightPos, g_lightPos[0], g_lightPos[1], g_lightPos[2]);
 
+  gl.uniform3f(u_cameraPos, g_eye[0], g_eye[1], g_eye[2]);
+
+  gl.uniform1i(u_lightOn, g_lightOn);
+
   var light = new Cube();
-  light.color[(2, 2, 0, 1)];
+  light.color[(2.0, 2.0, 0.0, 1.0)];
   light.matrix.translate(g_lightPos[0], g_lightPos[1], g_lightPos[2]);
-  light.matrix.scale(0.1, 0.1, 0.1);
+  light.matrix.scale(-0.1, -0.1, -0.1);
   light.matrix.translate(-0.5, -0.5, -0.5);
   light.render();
 
