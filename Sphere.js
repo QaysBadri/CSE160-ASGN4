@@ -3,6 +3,7 @@ class Sphere {
     this.type = "sphere";
     this.color = [1.0, 1.0, 1.0, 1.0];
     this.matrix = new Matrix4();
+    this.normalMatrix = new Matrix4();
     this.textureNum = -2;
     this.segments = 12;
     this.bands = 8;
@@ -14,6 +15,7 @@ class Sphere {
     gl.uniform1i(u_whichTexture, this.textureNum);
     gl.uniformMatrix4fv(u_ModelMatrix, false, this.matrix.elements);
     gl.uniform4f(u_FragColor, rgba[0], rgba[1], rgba[2], rgba[3]);
+    gl.uniformMatrix4fv(u_NormalMatrix, false, this.normalMatrix.elements);
 
     let latAngleStep = 180 / this.bands;
     let lonAngleStep = 360 / this.segments;

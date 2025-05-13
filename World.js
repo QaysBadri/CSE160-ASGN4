@@ -7,13 +7,14 @@ var VSHADER_SOURCE = `
     varying vec3 v_Normal;
     varying vec4 v_VertPos;
     uniform mat4 u_ModelMatrix;
+    uniform mat4 u_NormalMatrix;
     uniform mat4 u_GlobalRotateMatrix;
     uniform mat4 u_ViewMatrix;
     uniform mat4 u_ProjectionMatrix;
     void main() {
       gl_Position = u_ProjectionMatrix * u_ViewMatrix * u_GlobalRotateMatrix * u_ModelMatrix * a_Position;
       v_UV = a_UV;
-      v_Normal = a_Normal;
+      v_Normal = normalize(vec3(u_NormalMatrix * vec4(a_Normal, 1)));
       v_VertPos = u_ModelMatrix * a_Position;
   }`;
 
@@ -75,7 +76,8 @@ let canvas,
   u_Sampler,
   u_whichTexture,
   u_lightPos,
-  u_cameraPos;
+  u_cameraPos,
+  u_NormalMatrix;
 
 let g_skyTextureObject = null;
 let g_grassTextureObject = null;
@@ -128,6 +130,7 @@ function addGrassBlock(x, y, z) {
   grass.matrix.setTranslate(x, y - 0.6, z);
   grass.matrix.scale(0.5, 0.5, 0.5);
   grassBlocks.push(grass);
+  // console.log("Grass block added at: ", x, y, z);
 }
 
 function setupWebGL() {
@@ -161,6 +164,7 @@ function connectVariablesToGLSL() {
   u_lightPos = gl.getUniformLocation(gl.program, "u_lightPos");
   u_cameraPos = gl.getUniformLocation(gl.program, "u_cameraPos");
   u_lightOn = gl.getUniformLocation(gl.program, "u_lightOn");
+  u_NormalMatrix = gl.getUniformLocation(gl.program, "u_NormalMatrix");
 
   if (
     a_Position < 0 ||
@@ -484,11 +488,12 @@ function main() {
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-  for (let i = 0; i < 1; i++) {
-    let x = (Math.random() - 0.5) * 7;
-    let z = (Math.random() - 0.5) * 7;
-    addGrassBlock(x, 0, z);
-  }
+  // for (let i = 0; i < 1; i++) {
+  //   let x = (Math.random() - 0.5) * 7;
+  //   let z = (Math.random() - 0.5) * 7;
+  //   addGrassBlock(x, 0, z);
+  // }
+  addGrassBlock(0.5, 0, 1.75);
 
   requestAnimationFrame(tick);
 }
@@ -637,8 +642,10 @@ function renderAllShapes() {
 
   gl.uniform1i(u_lightOn, g_lightOn);
 
+  var lightColor = [2.0, 2.0, 0.0, 1.0];
+
   var light = new Cube();
-  light.color[(2.0, 2.0, 0.0, 1.0)];
+  light.color = lightColor;
   light.matrix.translate(g_lightPos[0], g_lightPos[1], g_lightPos[2]);
   light.matrix.scale(-0.1, -0.1, -0.1);
   light.matrix.translate(-0.5, -0.5, -0.5);
@@ -683,6 +690,7 @@ function renderAllShapes() {
   var headBaseMatrix = new Matrix4(head.matrix);
   head.matrix.scale(0.3, 0.3, 0.3);
   head.matrix.translate(-0.5, -0.5, -0.5);
+  head.normalMatrix.setInverseOf(head.matrix).transpose();
   head.render();
 
   var eyeL = new Sphere();
@@ -695,6 +703,7 @@ function renderAllShapes() {
   eyeL.matrix = new Matrix4(headBaseMatrix);
   eyeL.matrix.translate(0.151, 0.1, 0.1);
   eyeL.matrix.scale(0.06, 0.06, 0.06);
+  eyeL.normalMatrix.setInverseOf(eyeL.matrix).transpose();
   eyeL.render();
 
   var eyeR = new Sphere();
@@ -707,6 +716,7 @@ function renderAllShapes() {
   eyeR.matrix = new Matrix4(headBaseMatrix);
   eyeR.matrix.translate(0.151, 0.1, -0.1);
   eyeR.matrix.scale(0.06, 0.06, 0.06);
+  eyeR.normalMatrix.setInverseOf(eyeR.matrix).transpose();
   eyeR.render();
 
   var beak = new Cube();
@@ -716,6 +726,7 @@ function renderAllShapes() {
   beak.matrix.translate(0.16, 0, 0);
   beak.matrix.scale(0.2, 0.075, 0.26);
   beak.matrix.translate(-0.5, -0.5, -0.5);
+  beak.normalMatrix.setInverseOf(beak.matrix).transpose();
   beak.render();
 
   var wingUpperL = new Cube();
@@ -729,6 +740,7 @@ function renderAllShapes() {
   var wingUpperLMatrix = new Matrix4(wingUpperL.matrix);
   wingUpperL.matrix.scale(0.3, 0.08, 0.08);
   wingUpperL.matrix.translate(0.0, -0.5, -0.5);
+  wingUpperL.normalMatrix.setInverseOf(wingUpperL.matrix).transpose();
   wingUpperL.render();
 
   var wingLowerL = new Cube();
@@ -743,6 +755,7 @@ function renderAllShapes() {
   var wingLowerLMatrix = new Matrix4(wingLowerL.matrix);
   wingLowerL.matrix.scale(0.25, 0.07, 0.07);
   wingLowerL.matrix.translate(0.0, -0.5, -0.5);
+  wingLowerL.normalMatrix.setInverseOf(wingLowerL.matrix).transpose();
   wingLowerL.render();
 
   var wingHandL = new Cube();
@@ -756,6 +769,7 @@ function renderAllShapes() {
   wingHandL.matrix.rotate(g_wingHandAngle, 0, 1, 0);
   wingHandL.matrix.scale(0.1, 0.06, 0.06);
   wingHandL.matrix.translate(0.0, -0.5, -0.5);
+  wingHandL.normalMatrix.setInverseOf(wingHandL.matrix).transpose();
   wingHandL.render();
 
   var wingUpperR = new Cube();
@@ -769,6 +783,7 @@ function renderAllShapes() {
   var wingUpperRMatrix = new Matrix4(wingUpperR.matrix);
   wingUpperR.matrix.scale(0.3, 0.08, 0.08);
   wingUpperR.matrix.translate(0.0, -0.5, -0.5);
+  wingUpperR.normalMatrix.setInverseOf(wingUpperR.matrix).transpose();
   wingUpperR.render();
 
   var wingLowerR = new Cube();
@@ -783,6 +798,7 @@ function renderAllShapes() {
   var wingLowerRMatrix = new Matrix4(wingLowerR.matrix);
   wingLowerR.matrix.scale(0.25, 0.07, 0.07);
   wingLowerR.matrix.translate(0.0, -0.5, -0.5);
+  wingLowerR.normalMatrix.setInverseOf(wingLowerR.matrix).transpose();
   wingLowerR.render();
 
   var wingHandR = new Cube();
@@ -796,6 +812,7 @@ function renderAllShapes() {
   wingHandR.matrix.rotate(-g_wingHandAngle, 0, 1, 0);
   wingHandR.matrix.scale(0.1, 0.06, 0.06);
   wingHandR.matrix.translate(0.0, -0.5, -0.5);
+  wingHandR.normalMatrix.setInverseOf(wingHandR.matrix).transpose();
   wingHandR.render();
 
   const upperLegHeight = 0.2;
