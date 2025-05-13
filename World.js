@@ -3,71 +3,119 @@ var VSHADER_SOURCE = `
     attribute vec4 a_Position;
     attribute vec2 a_UV;
     attribute vec3 a_Normal;
-    varying vec2 v_UV;
-    varying vec3 v_Normal;
-    varying vec4 v_VertPos;
+
     uniform mat4 u_ModelMatrix;
     uniform mat4 u_NormalMatrix;
     uniform mat4 u_GlobalRotateMatrix;
     uniform mat4 u_ViewMatrix;
     uniform mat4 u_ProjectionMatrix;
+
+    varying vec2 v_UV;
+    varying vec3 v_NormalWorld;
+    varying vec4 v_FragPosWorld;
+
     void main() {
-      gl_Position = u_ProjectionMatrix * u_ViewMatrix * u_GlobalRotateMatrix * u_ModelMatrix * a_Position;
+      mat4 modelToWorldMatrix = u_GlobalRotateMatrix * u_ModelMatrix;
+      gl_Position = u_ProjectionMatrix * u_ViewMatrix * modelToWorldMatrix * a_Position;
       v_UV = a_UV;
-      v_Normal = normalize(vec3(u_NormalMatrix * vec4(a_Normal, 1)));
-      v_VertPos = u_ModelMatrix * a_Position;
-  }`;
+      v_NormalWorld = normalize(vec3(u_NormalMatrix * vec4(a_Normal, 0.0)));
+      v_FragPosWorld = modelToWorldMatrix * a_Position;
+    }`;
 
 var FSHADER_SOURCE = `
   precision mediump float;
   varying vec2 v_UV;
-  varying vec3 v_Normal;
+  varying vec3 v_NormalWorld;
+  varying vec4 v_FragPosWorld;
+
   uniform vec4 u_FragColor;
   uniform sampler2D u_Sampler;
   uniform int u_whichTexture;
-  uniform vec3 u_lightPos;
   uniform vec3 u_cameraPos;
-  varying vec4 v_VertPos;
+
+  uniform vec3 u_lightPos;
   uniform bool u_lightOn;
+
+  uniform vec3 u_spotLightPos;
+  uniform vec3 u_spotLightDir;
+  uniform float u_spotLightCutoff;
+  uniform bool u_spotLightOn;
+
+  uniform vec3 u_pointLightColor;
+  uniform vec3 u_spotLightColor;
+
+
   void main() {
+    vec4 baseColor;
     if (u_whichTexture == -3) {
-      gl_FragColor = vec4((v_Normal+1.0)/2.0, 1.0);
+      gl_FragColor = vec4((normalize(v_NormalWorld) + 1.0) / 2.0, 1.0);
+      return;
     } else if (u_whichTexture == -2) {
-      gl_FragColor = u_FragColor;
+      baseColor = u_FragColor;
     } else if (u_whichTexture == -1) {
       gl_FragColor = vec4(v_UV, 1.0, 1.0);
+      return;
     } else if (u_whichTexture == 0) {
-      gl_FragColor = texture2D(u_Sampler, v_UV);
+      baseColor = texture2D(u_Sampler, v_UV);
     } else {
-      gl_FragColor = vec4(1, 0.2, 0.2, 1);
+      baseColor = vec4(1.0, 0.2, 0.2, 1.0);
     }
 
-    vec3 lightVector = u_lightPos - vec3(v_VertPos);
-    float r = length(lightVector);
+    vec3 fragPos = v_FragPosWorld.xyz / v_FragPosWorld.w;
+    vec3 N = normalize(v_NormalWorld);
+    vec3 E = normalize(u_cameraPos - fragPos);
 
-    vec3 L = normalize(lightVector);
-    vec3 N = normalize(v_Normal);
-    float nDotL = max(dot(N, L), 0.0);
+    vec3 ambientLightColor = vec3(0.2, 0.2, 0.2);
+    vec3 ambient = ambientLightColor * baseColor.rgb;
 
-    vec3 R = reflect(-L, N);
+    vec3 totalDiffuse = vec3(0.0, 0.0, 0.0);
+    vec3 totalSpecular = vec3(0.0, 0.0, 0.0);
 
-    vec3 E = normalize(u_cameraPos - vec3(v_VertPos));
+    if (u_lightOn) {
+      vec3 pointLightColor = vec3(1.0, 1.0, 1.0);
+      vec3 lightDirPoint = normalize(u_lightPos - fragPos);
+      float nDotL_point = max(dot(N, lightDirPoint), 0.0);
+      totalDiffuse += pointLightColor * baseColor.rgb * nDotL_point;
 
-    float specular = pow(max(dot(E, R), 0.0), 10.0);
-
-    vec3 diffuse  = vec3(gl_FragColor) * nDotL * 0.7;
-    vec3 ambient = vec3(gl_FragColor) * 0.3;
-    if (u_lightOn){
-      gl_FragColor = vec4(specular + diffuse + ambient, 1.0);
-    } else {
-      gl_FragColor = vec4(diffuse + ambient, 1.0);
+      vec3 R_point = reflect(-lightDirPoint, N);
+      float shininess_point = 32.0;
+      float spec_point = pow(max(dot(E, R_point), 0.0), shininess_point);
+      totalSpecular += pointLightColor * 0.5 * spec_point;
     }
+
+    if (u_spotLightOn) {
+      vec3 spotLightColor = vec3(1.0, 1.0, 0.8);
+      vec3 lightDirSpot = normalize(u_spotLightPos - fragPos); 
+      float nDotL_spot = max(dot(N, lightDirSpot), 0.0);
+
+      float theta = dot(lightDirSpot, -normalize(u_spotLightDir));
+      float intensity = 0.0;
+
+      if (theta > u_spotLightCutoff) {
+        float epsilon = u_spotLightCutoff - (u_spotLightCutoff * 0.9);
+        intensity = clamp((theta - (u_spotLightCutoff - epsilon)) / epsilon, 0.0, 1.0);
+        // intensity = 1.0;
+      }
+
+      if (intensity > 0.0) {
+        totalDiffuse += spotLightColor * baseColor.rgb * nDotL_spot * intensity;
+
+        vec3 R_spot = reflect(-lightDirSpot, N);
+        float shininess_spot = 64.0;
+        float spec_spot = pow(max(dot(E, R_spot), 0.0), shininess_spot);
+        totalSpecular += spotLightColor * 0.8 * spec_spot * intensity;
+      }
+    }
+
+    vec3 finalColor = ambient + totalDiffuse + totalSpecular;
+    gl_FragColor = vec4(finalColor, baseColor.a);
   }`;
 
 let canvas,
   gl,
   a_Position,
   a_UV,
+  a_Normal,
   u_FragColor,
   u_ModelMatrix,
   u_GlobalRotateMatrix,
@@ -76,8 +124,13 @@ let canvas,
   u_Sampler,
   u_whichTexture,
   u_lightPos,
+  u_lightOn,
   u_cameraPos,
-  u_NormalMatrix;
+  u_NormalMatrix,
+  u_spotLightPos,
+  u_spotLightDir,
+  u_spotLightCutoff,
+  u_spotLightOn;
 
 let g_skyTextureObject = null;
 let g_grassTextureObject = null;
@@ -118,6 +171,11 @@ let g_normalOn = false;
 
 let g_lightPos = [0, 1, -2];
 let g_lightOn = true;
+
+let g_spotLightPos = [0.6, 2, -1.75];
+let g_spotLightDir = [-0.5, -1, 0.5];
+let g_spotLightCutoffAngle = 15.0;
+let g_spotLightOn = true;
 
 function addGrassBlock(x, y, z) {
   let grass = new Cube();
@@ -166,6 +224,16 @@ function connectVariablesToGLSL() {
   u_lightOn = gl.getUniformLocation(gl.program, "u_lightOn");
   u_NormalMatrix = gl.getUniformLocation(gl.program, "u_NormalMatrix");
 
+  u_spotLightPos = gl.getUniformLocation(gl.program, "u_spotLightPos");
+  u_spotLightDir = gl.getUniformLocation(gl.program, "u_spotLightDir");
+  u_spotLightCutoff = gl.getUniformLocation(gl.program, "u_spotLightCutoff");
+  u_spotLightOn = gl.getUniformLocation(gl.program, "u_spotLightOn");
+
+  window.u_spotLightPos = u_spotLightPos;
+  window.u_spotLightDir = u_spotLightDir;
+  window.u_spotLightCutoff = u_spotLightCutoff;
+  window.u_spotLightOn = u_spotLightOn;
+
   if (
     a_Position < 0 ||
     a_UV < 0 ||
@@ -202,6 +270,23 @@ function connectVariablesToGLSL() {
       "u_ProjectionMatrix:",
       u_ProjectionMatrix
     );
+    if (
+      !u_NormalMatrix ||
+      !u_spotLightPos ||
+      !u_spotLightDir ||
+      !u_spotLightCutoff
+    ) {
+      console.error(
+        "Failed to get storage location of one or more GLSL variables (including spotlight, normal matrix, or camera pos)."
+      );
+      console.log("u_NormalMatrix:", u_NormalMatrix);
+      console.log("u_spotLightPos:", u_spotLightPos);
+      console.log("u_spotLightDir:", u_spotLightDir);
+      console.log("u_spotLightCutoff:", u_spotLightCutoff);
+      console.log("u_spotLightOn:", u_spotLightOn);
+      console.log("u_cameraPos:", u_cameraPos);
+      return;
+    }
     console.log("u_Sampler:", u_Sampler, "u_whichTexture:", u_whichTexture);
     return;
   }
@@ -219,6 +304,12 @@ function addActionsForHtmlUI() {
   };
   document.getElementById("lightOffButton").onclick = function () {
     g_lightOn = false;
+  };
+  document.getElementById("spotLightOnButton").onclick = function () {
+    g_spotLightOn = true;
+  };
+  document.getElementById("spotLightOffButton").onclick = function () {
+    g_spotLightOn = false;
   };
   document
     .getElementById("wingUpperSlide")
@@ -300,6 +391,33 @@ function addActionsForHtmlUI() {
     .addEventListener("mousemove", function (ev) {
       if (ev.buttons === 1) {
         g_lightPos[2] = this.value / 100;
+      }
+      renderAllShapes();
+    });
+
+  document
+    .getElementById("spotLightSlideX")
+    .addEventListener("mousemove", function (ev) {
+      if (ev.buttons === 1) {
+        g_spotLightPos[0] = this.value / 100;
+      }
+      renderAllShapes();
+    });
+
+  document
+    .getElementById("spotLightSlideY")
+    .addEventListener("mousemove", function (ev) {
+      if (ev.buttons === 1) {
+        g_spotLightPos[1] = this.value / 100;
+      }
+      renderAllShapes();
+    });
+
+  document
+    .getElementById("spotLightSlideZ")
+    .addEventListener("mousemove", function (ev) {
+      if (ev.buttons === 1) {
+        g_spotLightPos[2] = this.value / 100;
       }
       renderAllShapes();
     });
@@ -637,10 +755,33 @@ function renderAllShapes() {
   floor.render();
 
   gl.uniform3f(u_lightPos, g_lightPos[0], g_lightPos[1], g_lightPos[2]);
-
   gl.uniform3f(u_cameraPos, g_eye[0], g_eye[1], g_eye[2]);
-
   gl.uniform1i(u_lightOn, g_lightOn);
+  gl.uniform1i(u_spotLightOn, g_spotLightOn);
+
+  gl.uniform3f(
+    u_spotLightPos,
+    g_spotLightPos[0],
+    g_spotLightPos[1],
+    g_spotLightPos[2]
+  );
+
+  let spotDirNormalized = new Vector3(g_spotLightDir).normalize().elements;
+  gl.uniform3f(
+    u_spotLightDir,
+    spotDirNormalized[0],
+    spotDirNormalized[1],
+    spotDirNormalized[2]
+  );
+
+  gl.uniform1f(
+    u_spotLightCutoff,
+    Math.cos((g_spotLightCutoffAngle * Math.PI) / 180.0)
+  );
+
+  if (g_spotLightOn) {
+    gl.uniform1i(u_spotLightOn, g_spotLightOn);
+  }
 
   var lightColor = [2.0, 2.0, 0.0, 1.0];
 
@@ -650,6 +791,20 @@ function renderAllShapes() {
   light.matrix.scale(-0.1, -0.1, -0.1);
   light.matrix.translate(-0.5, -0.5, -0.5);
   light.render();
+
+  var spotLightCube = new Cube();
+  spotLightCube.color = [1.0, 0.8, 0.0, 1.0];
+  spotLightCube.textureNum = -2;
+
+  spotLightCube.matrix.setTranslate(
+    g_spotLightPos[0],
+    g_spotLightPos[1],
+    g_spotLightPos[2]
+  );
+  spotLightCube.matrix.scale(-0.1, -0.1, -0.1);
+  spotLightCube.matrix.translate(-0.5, -0.5, -0.5);
+  spotLightCube.normalMatrix.setInverseOf(spotLightCube.matrix).transpose();
+  spotLightCube.render();
 
   var staticSphere = new Sphere2();
   staticSphere.color = [0.9, 0.3, 0.3, 1.0];
